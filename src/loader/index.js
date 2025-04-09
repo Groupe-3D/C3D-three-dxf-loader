@@ -37,8 +37,8 @@ const curlyBraces = /\\[{}]/g
  * @return {Number} the angle
  */
 THREEx.Math.angle2 = function (p1, p2) {
-  var v1 = new THREE.Vector2(p1.x, p1.y)
-  var v2 = new THREE.Vector2(p2.x, p2.y)
+  var v1 = new THREE.Vector2(p1.x, p1.y, p1.z || 0)
+  var v2 = new THREE.Vector2(p2.x, p2.y, p2.z || 0)
   v2.sub(v1) // sets v2 to be our chord
   v2.normalize()
   if (v2.y < 0) return -Math.acos(v2.x)
@@ -64,9 +64,9 @@ function getBulgeCurvePoints(startPoint, endPoint, bulge, segments) {
 
   var obj = {}
   obj.startPoint = p0 = startPoint
-    ? new THREE.Vector2(startPoint.x, startPoint.y)
+    ? new THREE.Vector2(startPoint.x, startPoint.y, startPoint.z || 0)
     : new THREE.Vector2(0, 0)
-  obj.endPoint = p1 = endPoint ? new THREE.Vector2(endPoint.x, endPoint.y) : new THREE.Vector2(1, 0)
+  obj.endPoint = p1 = endPoint ? new THREE.Vector2(endPoint.x, endPoint.y, endPoint.z || 0) : new THREE.Vector2(1, 0)
   obj.bulge = bulge = bulge || 1
 
   angle = 4 * Math.atan(bulge)
@@ -83,11 +83,11 @@ function getBulgeCurvePoints(startPoint, endPoint, bulge, segments) {
 
   var vertices = []
 
-  vertices.push(new THREE.Vector3(p0.x, p0.y, 0))
+  vertices.push(new THREE.Vector3(p0.x, p0.y, p0.z || 0))
 
   for (i = 1; i <= segments - 1; i++) {
     vertex = THREEx.Math.polar(center, Math.abs(radius), startAngle + thetaAngle * i)
-    vertices.push(new THREE.Vector3(vertex.x, vertex.y, 0))
+    vertices.push(new THREE.Vector3(vertex.x, vertex.y, vertex.z || 0))
   }
 
   return vertices
@@ -184,7 +184,7 @@ class DXFLoader extends THREE.Loader {
   loadEntities(data, options = this) {
     const { font, enableLayer, defaultColor, enableUnitConversion } = options || {}
     /* Entity Type
-            'POINT' | '3DFACE' | 'ARC' | 'ATTDEF' | 'CIRCLE' | 'DIMENSION' | 'MULTILEADER' | 'ELLIPSE' | 'INSERT' | 'LINE' | 
+            'POINT' | '3DFACE' | 'ARC' | 'ATTDEF' | 'CIRCLE' | 'DIMENSION' | 'MULTILEADER' | 'ELLIPSE' | 'INSERT' | 'LINE' |
             'LWPOLYLINE' | 'MTEXT' | 'POLYLINE' | 'SOLID' | 'SPLINE' | 'TEXT' | 'VERTEX'
         */
     function drawEntity(entity, data) {
@@ -487,7 +487,7 @@ class DXFLoader extends THREE.Loader {
             points.push.apply(points, bulgePoints)
           } else {
             vertex = entity.vertices[i]
-            points.push(new THREE.Vector3(vertex.x, vertex.y, 0))
+            points.push(new THREE.Vector3(vertex.x, vertex.y, vertex.z || 0))
           }
         }
 
@@ -535,7 +535,7 @@ class DXFLoader extends THREE.Loader {
             faces.push(face)
           }
         } else {
-          vertices.push(new THREE.Vector3(v.x, v.y, 0))
+          vertices.push(new THREE.Vector3(v.x, v.y, v.z || 0))
         }
       }
 
