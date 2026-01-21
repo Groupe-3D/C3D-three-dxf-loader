@@ -58,15 +58,18 @@ THREEx.Math.polar = function (point, distance, angle) {
  * @param endPoint - the ending point of the curve
  * @param bulge - a value indicating how much to curve
  * @param segments - number of segments between the two given points
+ * @param defaultZ - default Z coordinate to use when points don't have Z (e.g., from entity elevation)
  */
-function getBulgeCurvePoints(startPoint, endPoint, bulge, segments) {
+function getBulgeCurvePoints(startPoint, endPoint, bulge, segments, defaultZ) {
   var vertex, i, center, p0, p1, angle, radius, startAngle, thetaAngle
+
+  defaultZ = defaultZ !== undefined ? defaultZ : 0
 
   var obj = {}
   obj.startPoint = p0 = startPoint
-    ? new THREE.Vector2(startPoint.x, startPoint.y, startPoint.z || 0)
+    ? new THREE.Vector2(startPoint.x, startPoint.y, startPoint.z !== undefined ? startPoint.z : defaultZ)
     : new THREE.Vector2(0, 0)
-  obj.endPoint = p1 = endPoint ? new THREE.Vector2(endPoint.x, endPoint.y, endPoint.z || 0) : new THREE.Vector2(1, 0)
+  obj.endPoint = p1 = endPoint ? new THREE.Vector2(endPoint.x, endPoint.y, endPoint.z !== undefined ? endPoint.z : defaultZ) : new THREE.Vector2(1, 0)
   obj.bulge = bulge = bulge || 1
 
   angle = 4 * Math.atan(bulge)
@@ -83,11 +86,13 @@ function getBulgeCurvePoints(startPoint, endPoint, bulge, segments) {
 
   var vertices = []
 
-  vertices.push(new THREE.Vector3(p0.x, p0.y, p0.z || 0))
+  // Use the Z coordinate from startPoint if available, otherwise use defaultZ
+  const z = startPoint && startPoint.z !== undefined ? startPoint.z : defaultZ
+  vertices.push(new THREE.Vector3(p0.x, p0.y, z))
 
   for (i = 1; i <= segments - 1; i++) {
     vertex = THREEx.Math.polar(center, Math.abs(radius), startAngle + thetaAngle * i)
-    vertices.push(new THREE.Vector3(vertex.x, vertex.y, vertex.z || 0))
+    vertices.push(new THREE.Vector3(vertex.x, vertex.y, z))
   }
 
   return vertices
@@ -477,17 +482,22 @@ class DXFLoader extends THREE.Loader {
       if (entity.isPolyfaceMesh) {
         points = decomposePolyfaceMesh(entity, data)
       } else {
+        // For LWPOLYLINE entities, use elevation when vertex doesn't have Z coordinate
+        const defaultZ = entity.elevation !== undefined ? entity.elevation : 0
+
         for (i = 0; i < entity.vertices.length; i++) {
           if (entity.vertices[i].bulge) {
             bulge = entity.vertices[i].bulge
             startPoint = entity.vertices[i]
             endPoint = i + 1 < entity.vertices.length ? entity.vertices[i + 1] : points[0]
 
-            let bulgePoints = getBulgeCurvePoints(startPoint, endPoint, bulge)
+            let bulgePoints = getBulgeCurvePoints(startPoint, endPoint, bulge, undefined, defaultZ)
             points.push.apply(points, bulgePoints)
           } else {
             vertex = entity.vertices[i]
-            points.push(new THREE.Vector3(vertex.x, vertex.y, vertex.z || 0))
+            // Use vertex.z if available, otherwise use entity elevation, otherwise default to 0
+            const z = vertex.z !== undefined ? vertex.z : defaultZ
+            points.push(new THREE.Vector3(vertex.x, vertex.y, z))
           }
         }
 
