@@ -252,7 +252,16 @@ class DXFLoader extends THREE.Loader {
         rotation
       )
 
-      var points = curve.getPoints(50)
+      // Calculate number of segments based on approximate ellipse arc length
+      var angleSpan = Math.abs(entity.endAngle - entity.startAngle)
+      // Ramanujan's approximation for ellipse perimeter: π * (a + b) * (1 + 3h / (10 + √(4 - 3h))) where h = (a-b)²/(a+b)²
+      // For simplicity, use average radius for arc length estimation
+      var avgRadius = (xrad + yrad) / 2
+      var approxArcLength = avgRadius * angleSpan
+      var segmentLength = 5 // Desired segment length in drawing units
+      var numSegments = Math.max(Math.ceil(approxArcLength / segmentLength), 6) // Minimum 6 segments
+
+      var points = curve.getPoints(numSegments)
       var geometry = new THREE.BufferGeometry().setFromPoints(points)
       var material = new THREE.LineBasicMaterial({ linewidth: 1, color: color })
 
@@ -614,7 +623,13 @@ class DXFLoader extends THREE.Loader {
 
       var curve = new THREE.ArcCurve(0, 0, entity.radius, startAngle, endAngle)
 
-      var points = curve.getPoints(32)
+      // Calculate number of segments based on arc length (1 point every 5 units)
+      var angleSpan = Math.abs(endAngle - startAngle)
+      var arcLength = entity.radius * angleSpan
+      var segmentLength = 0.05 // Desired segment length in drawing units
+      var numSegments = Math.max(Math.ceil(arcLength / segmentLength), 6) // Minimum 6 segments
+
+      var points = curve.getPoints(numSegments)
       var geometry = new THREE.BufferGeometry().setFromPoints(points)
 
       var material = new THREE.LineBasicMaterial({ color: getColor(entity, data) })
