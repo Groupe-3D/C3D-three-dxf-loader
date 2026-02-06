@@ -80,7 +80,14 @@ function getBulgeCurvePoints(startPoint, endPoint, bulge, segments, defaultZ) {
     THREEx.Math.angle2(p0, p1) + (Math.PI / 2 - angle / 2)
   )
 
-  obj.segments = segments = segments || Math.max(Math.abs(Math.ceil(angle / (Math.PI / 18))), 6) // By default want a segment roughly every 10 degrees
+  // Calculate segments based on arc length (1 point every 100 units) if not explicitly provided
+  if (!segments) {
+    var arcLength = Math.abs(radius * angle)
+    var segmentLength = 100 // Desired segment length in drawing units
+    segments = Math.max(Math.ceil(arcLength / segmentLength), 6) // Minimum 6 segments
+  }
+
+  obj.segments = segments
   startAngle = THREEx.Math.angle2(center, p0)
   thetaAngle = angle / segments
 
@@ -626,7 +633,7 @@ class DXFLoader extends THREE.Loader {
       // Calculate number of segments based on arc length (1 point every 5 units)
       var angleSpan = Math.abs(endAngle - startAngle)
       var arcLength = entity.radius * angleSpan
-      var segmentLength = 0.05 // Desired segment length in drawing units
+      var segmentLength = 100 // Desired segment length in drawing units
       var numSegments = Math.max(Math.ceil(arcLength / segmentLength), 6) // Minimum 6 segments
 
       var points = curve.getPoints(numSegments)
