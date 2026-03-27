@@ -7,7 +7,7 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "serve": "^14.2.5"
+    "serve": "^14.2.6"
   },
   "dependencies": {
     "dxf-parser": "1.1.2",
