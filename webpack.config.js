@@ -3,16 +3,16 @@
  * All Rights Reserved.
  */
 
-import webpack from 'webpack'
-import HtmlWebpackPlugin from 'html-webpack-plugin'
-import nodeExternals from 'webpack-node-externals'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import HtmlWebpackPlugin from 'html-webpack-plugin';
+import webpack from 'webpack';
+import nodeExternals from 'webpack-node-externals';
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const webpackEnv = process.env.NODE_ENV || 'production'
-const isDev = webpackEnv === 'development'
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const webpackEnv = process.env.NODE_ENV || 'production';
+const isDev = webpackEnv === 'development';
 
 const config = {
   mode: webpackEnv,
@@ -35,7 +35,7 @@ const config = {
   externals: [
     'three',
     'three/examples/jsm/geometries/TextGeometry.js',
-    'three/examples/jsm/controls/OrbitControls.js'
+    'three/examples/jsm/controls/OrbitControls.js',
   ],
   module: {
     rules: [
@@ -61,24 +61,21 @@ const config = {
         'PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n' +
         'LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT\n' +
         'OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR\n' +
-        'OTHER DEALINGS IN THE SOFTWARE.\n'
+        'OTHER DEALINGS IN THE SOFTWARE.\n',
     ),
   ],
-}
+};
 
-const nodeConfig = {
+const _nodeConfig = {
   ...config,
   target: 'node',
-  externals: [
-    ...config.externals,
-    nodeExternals()
-  ],
+  externals: [...config.externals, nodeExternals()],
   output: {
     ...config.output,
     path: path.resolve(__dirname, 'dist/node'),
     chunkFormat: 'module',
-  }
-}
+  },
+};
 
 const browserConfig = {
   ...config,
@@ -93,9 +90,8 @@ const browserConfig = {
     new HtmlWebpackPlugin({
       title: 'Production',
     }),
-  ]
-}
-
+  ],
+};
 
 // export default [nodeConfig, browserConfig]
-export default [browserConfig]
+export default [browserConfig];

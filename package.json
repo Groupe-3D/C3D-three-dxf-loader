@@ -4,18 +4,22 @@
   "description": "Cross platform DXF loader for three.js. Out of the box usable with react-three-fiber.",
   "type": "module",
   "main": "src/loader/index.js",
-  "module": "src/Loader.js",
+  "module": "src/loader/index.js",
+  "types": "src/loader/index.d.ts",
   "scripts": {
     "build-dev": "cross-env NODE_ENV=development webpack -c webpack.config.js",
     "build": "cross-env NODE_ENV=production webpack -c webpack.config.js",
     "prepublishOnly": "npm run build",
     "start": "npm install && npm run build && cd sample && npm install && npm run start",
     "start-dev": "npm install && npm run build-dev && cd sample && npm install && npm run start",
-    "lint": "eslint src --ext js --report-unused-disable-directives --max-warnings 0",
-    "prettier": "prettier src/**/*.js --write && prettier sample/*.js --write"
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "biome:ci": "biome ci .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "exports": {
     ".": {
+      "types": "./src/loader/index.d.ts",
       "import": "./src/loader/index.js"
     }
   },
@@ -34,14 +38,15 @@
   ],
   "license": "MIT",
   "files": [
+    "src",
     "dist/*"
   ],
   "devDependencies": {
+    "@biomejs/biome": "^2.5.2",
+    "@types/three": "^0.173.0",
     "cross-env": "^7.0.3",
-    "eslint": "^8.56.0",
-    "eslint-plugin-prettier": "^5.1.3",
     "html-webpack-plugin": "^5.5.0",
-    "prettier": "^3.1.1",
+    "typescript": "^5.9.3",
     "webpack": "^5.52.1",
     "webpack-cli": "^4.8.0",
     "webpack-node-externals": "^3.0.0"
