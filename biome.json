@@ -1,24 +1,31 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.2/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
   "assist": {
     "enabled": true
   },
-  "css": {
-    "parser": {
-      "tailwindDirectives": true
-    }
-  },
   "files": {
-    "includes": ["**", "!sample/fonts"]
+    "includes": [
+      "**",
+      "!**/fonts",
+      "!**/data",
+      "!dist",
+      "!pnpm-lock.yaml",
+      "!examples",
+      "!webpack.config.js"
+    ]
   },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
-    "indentWidth": 2
+    "indentWidth": 2,
+    "lineWidth": 100
   },
   "javascript": {
     "formatter": {
-      "quoteStyle": "single"
+      "quoteStyle": "single",
+      "semicolons": "asNeeded",
+      "trailingCommas": "es5",
+      "arrowParentheses": "always"
     }
   },
   "linter": {
@@ -31,5 +38,16 @@
     "clientKind": "git",
     "enabled": true,
     "useIgnoreFile": true
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["src/**/*.js"],
+      "linter": {
+        "enabled": false
+      },
+      "assist": {
+        "enabled": false
+      }
+    }
+  ]
 }

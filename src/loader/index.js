@@ -1124,7 +1124,12 @@ class DXFLoader extends THREE.Loader {
     // lossy (one code spans many AutoCAD releases).
     const unitCode = data.header?.['$INSUNITS'] ?? 0
     const [unitName, unitAbbr] = DXF_UNITS[unitCode] || ['', '']
-    data.units = { code: unitCode, name: unitName, abbr: unitAbbr, toMeter: getUnitToMeter(unitCode) }
+    data.units = {
+      code: unitCode,
+      name: unitName,
+      abbr: unitAbbr,
+      toMeter: getUnitToMeter(unitCode),
+    }
     data.version = { code: data.header?.['$ACADVER'] }
 
     return {
