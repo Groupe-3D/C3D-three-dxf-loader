@@ -28,6 +28,14 @@ function decodeDataUri(uri) {
 const textControlCharactersRegex = /\\[AXQWOoLIpfH].*;/g
 const curlyBraces = /\\[{}]/g
 
+// Curved entities are tessellated by arc length rather than by a fixed segment
+// count, so a 10m arc and a 10mm arc don't get the same number of chords. The
+// lengths below are in drawing units and were tuned against C3D drawings; every
+// curve keeps a floor of 6 segments so small ones stay recognisable.
+const BULGE_SEGMENT_LENGTH = 100
+const ARC_SEGMENT_LENGTH = 100
+const ELLIPSE_SEGMENT_LENGTH = 5
+
 // DXF $INSUNITS code -> [full name, abbreviation]. The unit enum lives here (getUnitToMeter holds the
 // matching meter scale factor); consumers read the resolved unit off the returned `dxf.units`.
 const DXF_UNITS = {
@@ -84,8 +92,9 @@ THREEx.Math.polar = function (point, distance, angle) {
  * @param endPoint - the ending point of the curve
  * @param bulge - a value indicating how much to curve
  * @param segments - number of segments between the two given points
+ * @param defaultZ - Z to fall back to when the points carry no Z (e.g. LWPOLYLINE elevation)
  */
-function getBulgeCurvePoints(startPoint, endPoint, bulge, segments) {
+function getBulgeCurvePoints(startPoint, endPoint, bulge, segments, defaultZ = 0) {
   let vertex, i, center, p0, p1, angle, radius, startAngle, thetaAngle
 
   const obj = {}
@@ -103,17 +112,26 @@ function getBulgeCurvePoints(startPoint, endPoint, bulge, segments) {
     THREEx.Math.angle2(p0, p1) + (Math.PI / 2 - angle / 2)
   )
 
-  obj.segments = segments = segments || Math.max(Math.abs(Math.ceil(angle / (Math.PI / 18))), 6) // By default want a segment roughly every 10 degrees
+  // Tessellate by arc length rather than by angle, so large-radius bulges in
+  // real drawings don't collapse into visibly straight chords.
+  if (!segments) {
+    segments = Math.max(Math.ceil(Math.abs(radius * angle) / BULGE_SEGMENT_LENGTH), 6)
+  }
+  obj.segments = segments
   startAngle = THREEx.Math.angle2(center, p0)
   thetaAngle = angle / segments
 
   const vertices = []
 
-  vertices.push(new THREE.Vector3(p0.x, p0.y, 0))
+  // THREE.Vector2 drops any third constructor argument, so p0/p1 carry no Z --
+  // read it off the source point and fall back to the caller's default.
+  const z = startPoint && startPoint.z !== undefined ? startPoint.z : defaultZ
+
+  vertices.push(new THREE.Vector3(p0.x, p0.y, z))
 
   for (i = 1; i <= segments - 1; i++) {
     vertex = THREEx.Math.polar(center, Math.abs(radius), startAngle + thetaAngle * i)
-    vertices.push(new THREE.Vector3(vertex.x, vertex.y, 0))
+    vertices.push(new THREE.Vector3(vertex.x, vertex.y, z))
   }
 
   return vertices
@@ -270,7 +288,13 @@ class DXFLoader extends THREE.Loader {
         rotation
       )
 
-      const points = curve.getPoints(50)
+      // Approximate the arc length with the mean radius -- close enough to pick a
+      // segment count, and far cheaper than a real elliptic integral.
+      const angleSpan = Math.abs(entity.endAngle - entity.startAngle)
+      const approxArcLength = ((xrad + yrad) / 2) * angleSpan
+      const numSegments = Math.max(Math.ceil(approxArcLength / ELLIPSE_SEGMENT_LENGTH), 6)
+
+      const points = curve.getPoints(numSegments)
       const geometry = new THREE.BufferGeometry().setFromPoints(points)
       const material = new THREE.LineBasicMaterial({ linewidth: 1, color: color })
 
@@ -500,17 +524,23 @@ class DXFLoader extends THREE.Loader {
       if (entity.isPolyfaceMesh) {
         points = decomposePolyfaceMesh(entity, data)
       } else {
+        // LWPOLYLINE stores a single elevation on the entity rather than a Z per
+        // vertex, so anything at a non-zero height flattens onto Z=0 without this.
+        const defaultZ = entity.elevation !== undefined ? entity.elevation : 0
+
         for (i = 0; i < entity.vertices.length; i++) {
           if (entity.vertices[i].bulge) {
             bulge = entity.vertices[i].bulge
             startPoint = entity.vertices[i]
             endPoint = i + 1 < entity.vertices.length ? entity.vertices[i + 1] : points[0]
 
-            let bulgePoints = getBulgeCurvePoints(startPoint, endPoint, bulge)
+            let bulgePoints = getBulgeCurvePoints(startPoint, endPoint, bulge, undefined, defaultZ)
             points.push.apply(points, bulgePoints)
           } else {
             vertex = entity.vertices[i]
-            points.push(new THREE.Vector3(vertex.x, vertex.y, 0))
+            points.push(
+              new THREE.Vector3(vertex.x, vertex.y, vertex.z !== undefined ? vertex.z : defaultZ)
+            )
           }
         }
 
@@ -558,7 +588,7 @@ class DXFLoader extends THREE.Loader {
             faces.push(face)
           }
         } else {
-          vertices.push(new THREE.Vector3(v.x, v.y, 0))
+          vertices.push(new THREE.Vector3(v.x, v.y, v.z || 0))
         }
       }
 
@@ -627,7 +657,11 @@ class DXFLoader extends THREE.Loader {
 
       const curve = new THREE.ArcCurve(0, 0, entity.radius, startAngle, endAngle)
 
-      const points = curve.getPoints(32)
+      const angleSpan = Math.abs(endAngle - startAngle)
+      const arcLength = entity.radius * angleSpan
+      const numSegments = Math.max(Math.ceil(arcLength / ARC_SEGMENT_LENGTH), 6)
+
+      const points = curve.getPoints(numSegments)
       const geometry = new THREE.BufferGeometry().setFromPoints(points)
 
       const material = new THREE.LineBasicMaterial({ color: getColor(entity, data) })
