@@ -1,6 +1,6 @@
 {
   "name": "three-dxf-loader",
-  "version": "5.3.0",
+  "version": "5.5.0",
   "description": "Cross platform DXF loader for three.js. Out of the box usable with react-three-fiber.",
   "type": "module",
   "main": "src/loader/index.js",
@@ -9,9 +9,9 @@
   "scripts": {
     "build-dev": "cross-env NODE_ENV=development webpack -c webpack.config.js",
     "build": "cross-env NODE_ENV=production webpack -c webpack.config.js",
-    "prepublishOnly": "npm run build",
-    "start": "npm install && npm run build && cd sample && npm install && npm run start",
-    "start-dev": "npm install && npm run build-dev && cd sample && npm install && npm run start",
+    "prepublishOnly": "pnpm build",
+    "start-web": "pnpm install && pnpm build && cd examples/web && pnpm install && pnpm start",
+    "start-r3f": "pnpm install && pnpm build && cd examples/r3f && pnpm install && pnpm start",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "biome:ci": "biome ci .",
@@ -52,7 +52,7 @@
     "webpack-node-externals": "^3.0.0"
   },
   "peerDependencies": {
-    "three": "0.173.0"
+    "three": ">=0.129.0"
   },
   "keywords": [
     "dxf",
@@ -71,6 +71,6 @@
     "@dxfom/mtext": "^0.3.2",
     "dxf-parser": "^1.1.2",
     "js-base64": "^3.7.3",
-    "troika-three-text": "^0.48.0"
+    "troika-three-text": "^0.52.4"
   }
 }
