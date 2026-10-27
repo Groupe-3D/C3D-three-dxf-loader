@@ -1157,10 +1157,12 @@ class DXFLoader extends THREE.Loader {
       });
     }
     if (enableUnitConversion) {
-      const scale = data.header?.$DIMLFAC || 1;
+      // Only $INSUNITS sizes the geometry. $DIMLFAC is the linear scale of
+      // dimension measurements, i.e. of the text a dimension displays; scaling
+      // the model by it made a drawing with a $DIMLFAC of 100 a hundred times
+      // too large.
       const unitToMeter = getUnitToMeter(data.header?.$INSUNITS);
-      const finalScale = scale * unitToMeter;
-      parent.scale.set(finalScale, finalScale, finalScale);
+      parent.scale.set(unitToMeter, unitToMeter, unitToMeter);
     }
 
     return {
