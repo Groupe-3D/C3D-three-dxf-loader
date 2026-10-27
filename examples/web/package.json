@@ -1,0 +1,17 @@
+{
+  "name": "three-dxf-example-web",
+  "version": "5.4.0",
+  "description": "A demo app of three-dxf-loader",
+  "scripts": {
+    "start": "cd ../.. && serve"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.2.1"
+  },
+  "dependencies": {
+    "three-dxf-loader": "workspace:*",
+    "jquery": "^3.2.1",
+    "three": "0.180.0"
+  }
+}

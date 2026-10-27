@@ -1,18 +1,18 @@
 /*
- * Copyright (c) 2020-24 Prolincur Technologies LLP.
+ * Copyright (c) 2020-present Prolincur Technologies LLP.
  * All Rights Reserved.
  */
 
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import HtmlWebpackPlugin from 'html-webpack-plugin';
-import webpack from 'webpack';
-import nodeExternals from 'webpack-node-externals';
+import webpack from 'webpack'
+import HtmlWebpackPlugin from 'html-webpack-plugin'
+import nodeExternals from 'webpack-node-externals'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const webpackEnv = process.env.NODE_ENV || 'production';
-const isDev = webpackEnv === 'development';
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const webpackEnv = process.env.NODE_ENV || 'production'
+const isDev = webpackEnv === 'development'
 
 const config = {
   mode: webpackEnv,
@@ -34,8 +34,9 @@ const config = {
   externalsType: 'module',
   externals: [
     'three',
+    'three/examples/jsm/loaders/FontLoader.js',
     'three/examples/jsm/geometries/TextGeometry.js',
-    'three/examples/jsm/controls/OrbitControls.js',
+    'three/examples/jsm/controls/OrbitControls.js'
   ],
   module: {
     rules: [
@@ -53,7 +54,7 @@ const config = {
   },
   plugins: [
     new webpack.BannerPlugin(
-      'Copyright (c) 2021-24 Prolincur Technologies LLP.\nCopyright (c) 2015 GDS Storefront Estimating\nAll Rights Reserved.\n\n' +
+      'Copyright (c) 2021-present Prolincur Technologies LLP.\nCopyright (c) 2015 GDS Storefront Estimating\nAll Rights Reserved.\n\n' +
         'Please check the provided LICENSE file for licensing details.\n' +
         '\n' +
         'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,\n' +
@@ -61,21 +62,24 @@ const config = {
         'PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\n' +
         'LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT\n' +
         'OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR\n' +
-        'OTHER DEALINGS IN THE SOFTWARE.\n',
+        'OTHER DEALINGS IN THE SOFTWARE.\n'
     ),
   ],
-};
+}
 
-const _nodeConfig = {
+const nodeConfig = {
   ...config,
   target: 'node',
-  externals: [...config.externals, nodeExternals()],
+  externals: [
+    ...config.externals,
+    nodeExternals()
+  ],
   output: {
     ...config.output,
     path: path.resolve(__dirname, 'dist/node'),
     chunkFormat: 'module',
-  },
-};
+  }
+}
 
 const browserConfig = {
   ...config,
@@ -90,8 +94,9 @@ const browserConfig = {
     new HtmlWebpackPlugin({
       title: 'Production',
     }),
-  ],
-};
+  ]
+}
+
 
 // export default [nodeConfig, browserConfig]
-export default [browserConfig];
+export default [browserConfig]

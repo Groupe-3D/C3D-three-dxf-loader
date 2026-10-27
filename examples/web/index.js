@@ -1,0 +1,136 @@
+/*
+ * Copyright (c) 2020-present Prolincur Technologies LLP.
+ * All Rights Reserved.
+ */
+
+import 'three'
+import * as ThreeDxfLoader from 'three-dxf-viewer'
+import { DXFLoader } from 'three-dxf-loader'
+
+const progress = document.getElementById('file-progress-bar')
+const $progress = document.getElementsByClassName('progress')[0]
+
+const $cadview = document.getElementById('cad-view')
+const dxfContentEl = document.getElementById('dxf-content')
+const dxfStringCheckbox = document.getElementById('dxf-string')
+
+// Setup the drag and drop file listeners.
+// const dropZone = document.getElementById('drop-zone');
+// dropZone.addEventListener('dragover', handleDragOver, false);
+// dropZone.addEventListener('drop', onFileSelected, false);
+
+document.getElementById('dxf').addEventListener('change', onFileSelected, false)
+
+function onFileSelected(evt) {
+  progress.style.width = '0%'
+  progress.textContent = '0%'
+
+  const file = evt.target.files[0]
+  const output = []
+  output.push(
+    '<li><strong>',
+    encodeURI(file.name),
+    '</strong> (',
+    file.type || 'n/a',
+    ') - ',
+    file.size,
+    ' bytes, last modified: ',
+    file.lastModifiedDate ? file.lastModifiedDate.toLocaleDateString() : 'n/a',
+    '</li>'
+  )
+  document.getElementById('file-description').innerHTML = '<ul>' + output.join('') + '</ul>'
+
+  $progress.classList.add('loading')
+
+  const reader = new FileReader()
+  reader.onprogress = updateProgress
+  reader.onloadend = onSuccess
+  reader.onabort = abortUpload
+  reader.onerror = errorHandler
+  reader.readAsText(file)
+}
+
+function abortUpload() {
+  console.error('Aborted read!')
+}
+
+function errorHandler(evt) {
+  switch (evt.target.error.code) {
+    case evt.target.error.NOT_FOUND_ERR:
+      alert('File Not Found!')
+      break
+    case evt.target.error.NOT_READABLE_ERR:
+      alert('File is not readable')
+      break
+    case evt.target.error.ABORT_ERR:
+      break // noop
+    default:
+      alert('An error occurred reading this file.')
+  }
+}
+
+function updateProgress(evt) {
+  console.debug('progress', Math.round((evt.loaded / evt.total) * 100))
+  if (evt.lengthComputable) {
+    const percentLoaded = Math.round((evt.loaded / evt.total) * 100)
+    if (percentLoaded < 100) {
+      progress.style.width = percentLoaded + '%'
+      progress.textContent = percentLoaded + '%'
+    }
+  }
+}
+
+function onSuccess(evt) {
+  const fileReader = evt.target
+  if (fileReader.error) return console.error('error onloadend!?')
+  progress.style.width = '100%'
+  progress.textContent = '100%'
+  setTimeout(function () {
+    $progress.classList.remove('loading')
+  }, 2000)
+  const dxfLoader = new DXFLoader()
+  const { dxf } = dxfLoader.parse(fileReader.result)
+
+  dxfStringCheckbox.addEventListener('change', (event) => {
+    if (!dxf) {
+      dxfContentEl.innerHTML = 'No data.'
+    } else {
+      if (event.currentTarget.checked) {
+        dxfContentEl.innerHTML = JSON.stringify(dxf, null, 2)
+      } else {
+        dxfContentEl.innerHTML = 'Click checkbox to see DXF string.'
+      }
+    }
+  })
+
+  // Three.js changed the way fonts are loaded, and now we need to use FontLoader to load a font
+  //  and enable TextGeometry. See this example http://threejs.org/examples/?q=text#webgl_geometry_text
+  //  and this discussion https://github.com/mrdoob/three.js/issues/7398
+  let font
+  const loader = new ThreeDxfLoader.THREEx.FontLoader()
+  const fontUrl = '/examples/web/fonts/helvetiker_regular.typeface.json'
+  loader.load(
+    fontUrl,
+    function (response) {
+      font = response
+      font.url = fontUrl
+      const cadCanvas = new ThreeDxfLoader.Viewer(
+        dxf,
+        document.getElementById('cad-view'),
+        1000,
+        800,
+        font
+      )
+    },
+    null,
+    function (error) {
+      console.error(error)
+    }
+  )
+}
+
+function handleDragOver(evt) {
+  evt.stopPropagation()
+  evt.preventDefault()
+  evt.dataTransfer.dropEffect = 'copy' // Explicitly show this is a copy.
+}

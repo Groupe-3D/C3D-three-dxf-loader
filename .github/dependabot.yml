@@ -1,0 +1,31 @@
+# The fork tracks prolincur/three-dxf-loader, which moved from yarn/npm to a
+# pnpm workspace in 5.5.0. Dependabot was previously raising PRs against
+# yarn.lock and sample/package-lock.json, neither of which exists any more.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directories:
+      - '/'
+      - '/examples/web'
+      - '/examples/r3f'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Roll routine bumps up into one PR each instead of the long tail of
+      # single-package PRs the fork accumulated before.
+      dev-dependencies:
+        dependency-type: development
+        update-types: ['minor', 'patch']
+      production-dependencies:
+        dependency-type: production
+        update-types: ['minor', 'patch']
+    ignore:
+      # three is a peer dependency with a deliberately wide range; pinning it
+      # here would fight consumers' own three version.
+      - dependency-name: three
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: monthly
