@@ -1,7 +1,7 @@
 # Syncing this fork with upstream
 
 This is a fork of [prolincur/three-dxf-loader](https://github.com/prolincur/three-dxf-loader).
-Upstream's default branch is **`main`**, not `master`.
+Both this fork and upstream use **`main`** as their default branch.
 
 ## Last sync
 
@@ -65,9 +65,9 @@ git remote add upstream https://github.com/prolincur/three-dxf-loader.git   # on
 git fetch upstream
 
 # Anything new upstream?
-git log --oneline master..upstream/main
+git log --oneline origin/main..upstream/main
 
-git checkout -b sync/upstream-<version> master
+git checkout -b sync/upstream-<version> origin/main
 git merge upstream/main
 ```
 
@@ -90,7 +90,7 @@ corepack pnpm biome:ci && corepack pnpm typecheck && corepack pnpm build
 ```
 
 Check the type declarations against any new upstream API, update the table at
-the top of this file, commit, and open a PR into `master`. Merge it with a
+the top of this file, commit, and open a PR into `main`. Merge it with a
 **merge commit**, not squash or rebase. Squashing drops upstream's commits from
 the history, and the next sync would conflict on everything again.
 
