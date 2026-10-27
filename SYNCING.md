@@ -7,31 +7,37 @@ Upstream's default branch is **`main`**, not `master`.
 
 | | |
 |---|---|
-| Upstream commit | `e3a33095b189651542252400c487a9aba7a64e02` |
-| Upstream version | `5.5.0` |
-| Synced on | 2026-09-03 |
+| Upstream commit | `299d400d1b15e46bc8f506145c5daea30cb1431a` |
+| Upstream version | `5.6.0` |
+| Synced on | 2026-10-27 |
 
-The sync was done by resetting `src/` to upstream and replaying our patch on
-top, so there is **no merge ancestry** to upstream. `git merge upstream/main`
-will therefore re-conflict on everything already synced. Use the procedure
-below and the recorded commit above instead.
+Since 5.6.0, upstream is part of this branch's history (the 5.5.0 sync reset
+files instead of merging, so git could not tell what was already in). A sync is
+now an ordinary merge, and git only replays what upstream did since the commit
+above.
 
 ## What this fork actually changes
 
 Everything else is upstream's, unmodified. Keep it that way — the smaller this
-list, the cheaper every sync.
+list, the fewer conflicts each sync.
 
-- `src/loader/index.js`, ~60 lines:
-  - **3D handling.** LWPOLYLINE vertices and polyface mesh vertices keep their
-    Z. LWPOLYLINE carries a single `elevation` rather than a Z per vertex, so
-    `getBulgeCurvePoints` takes a `defaultZ` to thread it through.
+- `src/loader/index.js`, ~45 lines:
   - **Tessellation by arc length** rather than a fixed segment count, via
     `BULGE_SEGMENT_LENGTH`, `ARC_SEGMENT_LENGTH` and `ELLIPSE_SEGMENT_LENGTH`.
+  - **`$DIMLFAC` does not scale the model** (#19). Only `$INSUNITS` sizes the
+    geometry when unit conversion is on.
+  - One line (`data.units = {...}`) that biome wraps differently from prettier.
 - TypeScript declarations (`src/**/*.d.ts`), `tsconfig.json`, `types-test/`.
   Upstream ships no types.
 - `package.json`: `main`/`module`/`types` point at `src/` so the declarations
-  resolve, where upstream points at `dist/`.
+  resolve, where upstream points at `dist/`. Our scripts (biome, typecheck)
+  replace upstream's eslint/prettier/release scripts.
 - biome in place of upstream's eslint/prettier, plus `.github/`.
+- Not taken from upstream: `Makefile` and the `commit-and-tag-version` release
+  scripts. They publish upstream's npm package from `main`; we do neither.
+
+The 3D handling this fork used to carry (LWPOLYLINE elevation, polyface Z) was
+merged upstream as prolincur#40 and is no longer ours to maintain.
 
 ## Why formatting config is load-bearing
 
@@ -58,28 +64,35 @@ paid for again at the next sync.
 git remote add upstream https://github.com/prolincur/three-dxf-loader.git   # once
 git fetch upstream
 
-# What changed upstream since our last sync?
-git log --oneline <last-synced-sha>..upstream/main
-git diff --stat <last-synced-sha>..upstream/main -- src/
+# Anything new upstream?
+git log --oneline master..upstream/main
 
-git checkout -b sync/upstream-<version>
+git checkout -b sync/upstream-<version> master
+git merge upstream/main
+```
 
-# 1. Take upstream's tree for everything we don't own.
-git checkout upstream/main -- src README.md LICENSE webpack.config.js \
-    examples pnpm-lock.yaml pnpm-workspace.yaml .nvmrc .gitignore
+Conflicts, if any, land on the files listed above. Resolve them as:
 
-# 2. Our .d.ts files survive step 1 (checkout only overwrites paths upstream
-#    has). Replay the ~60 lines listed above onto upstream's src/loader/index.js
-#    -- read them off the previous sync commit, don't cherry-pick.
-# 3. Hand-merge package.json: upstream's version and dependencies, our
-#    main/module/types and scripts.
-# 4. Re-check the type declarations against any new upstream API.
+- `src/loader/index.js` — keep upstream's code and re-apply our lines from the
+  list above on top.
+- `package.json` — upstream's version and dependencies; our `main`/`module`/
+  `types` and scripts.
+- `pnpm-lock.yaml` — don't hand-merge it. Take either side, then let
+  `pnpm install` regenerate it.
+- Files upstream changed that we deleted (eslint/prettier config, `Makefile`)
+  — keep them deleted: `git rm <file>`.
 
+Then:
+
+```sh
 corepack pnpm install --no-frozen-lockfile
 corepack pnpm biome:ci && corepack pnpm typecheck && corepack pnpm build
 ```
 
-Then update the table at the top of this file.
+Check the type declarations against any new upstream API, update the table at
+the top of this file, commit, and open a PR into `master`. Merge it with a
+**merge commit**, not squash or rebase. Squashing drops upstream's commits from
+the history, and the next sync would conflict on everything again.
 
 ## Verifying a sync
 
@@ -88,7 +101,9 @@ hand against a real drawing:
 
 - a **3D** DXF and an LWPOLYLINE with non-zero `elevation` — the upstream
   sample (`examples/web/data/api-cw750-details.dxf`) is flat, so it exercises
-  none of our Z handling;
+  none of the Z handling;
 - a drawing with **arcs at the scale you care about**. The segment lengths are
   in drawing units, so a drawing in mm hits the 6-segment floor on every arc
-  while one in metres does not.
+  while one in metres does not;
+- a drawing with a `$DIMLFAC` other than 1 and unit conversion on — it should
+  come in at the size `$INSUNITS` says, not scaled by `$DIMLFAC`.
