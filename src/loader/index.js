@@ -6,11 +6,11 @@
 import * as THREE from 'three'
 import { BufferGeometry, Color, Float32BufferAttribute, Vector3 } from 'three'
 import { Text } from 'troika-three-text'
-import { parseDxfMTextContent } from '@dxfom/mtext'
 import { Base64 } from 'js-base64'
 import DxfParser from 'dxf-parser'
 import bSpline from './bspline'
 import ThreeEx from './extend'
+import { parseMText, parseText } from './mtext'
 
 // Three.js extension functions. Webpack doesn't seem to like it if we modify the THREE object directly.
 const THREEx = { Math: {} }
@@ -24,9 +24,6 @@ function decodeDataUri(uri) {
   if (!header.split(';').includes('base64')) return null
   return Base64.decode(payload)
 }
-
-const textControlCharactersRegex = /\\[AXQWOoLIpfH].*;/g
-const curlyBraces = /\\[{}]/g
 
 // Curved entities are tessellated by arc length rather than by a fixed segment
 // count, so a 10m arc and a 10mm arc don't get the same number of chords. The
@@ -92,7 +89,7 @@ THREEx.Math.polar = function (point, distance, angle) {
  * @param endPoint - the ending point of the curve
  * @param bulge - a value indicating how much to curve
  * @param segments - number of segments between the two given points
- * @param defaultZ - Z to fall back to when the points carry no Z (e.g. LWPOLYLINE elevation)
+ * @param defaultZ - Z to use when a point carries none, e.g. an LWPOLYLINE elevation
  */
 function getBulgeCurvePoints(startPoint, endPoint, bulge, segments, defaultZ = 0) {
   let vertex, i, center, p0, p1, angle, radius, startAngle, thetaAngle
@@ -123,8 +120,8 @@ function getBulgeCurvePoints(startPoint, endPoint, bulge, segments, defaultZ = 0
 
   const vertices = []
 
-  // THREE.Vector2 drops any third constructor argument, so p0/p1 carry no Z --
-  // read it off the source point and fall back to the caller's default.
+  // p0/p1 are Vector2, and THREEx.Math.polar returns a plain {x, y}, so the Z has
+  // to come off the source point rather than the computed ones.
   const z = startPoint && startPoint.z !== undefined ? startPoint.z : defaultZ
 
   vertices.push(new THREE.Vector3(p0.x, p0.y, z))
@@ -310,12 +307,15 @@ class DXFLoader extends THREE.Loader {
         return console.warn('font parameter not set. Ignoring text entity.')
       }
 
-      const textAndControlChars = parseDxfMTextContent(entity.text)
+      //Note: We currently only support a single format applied to all the mtext text. With
+      // several paragraph alignments (\pxq) the last one is used for the whole entity.
+      const { text, horizontalAlignment } = parseMText(entity.text)
+      const style = {
+        horizontalAlignment: horizontalAlignment || 'left',
+        textHeight: entity.height,
+      }
 
-      //Note: We currently only support a single format applied to all the mtext text
-      const content = mtextContentAndFormattingToTextAndStyle(textAndControlChars, entity, color)
-
-      const txt = createTextForScene(content.text, content.style, entity, color)
+      const txt = createTextForScene(text, style, entity, color)
       if (!txt) return null
 
       const group = new THREE.Object3D()
@@ -323,45 +323,11 @@ class DXFLoader extends THREE.Loader {
       return group
     }
 
-    function mtextContentAndFormattingToTextAndStyle(textAndControlChars, entity, color) {
-      let activeStyle = {
-        horizontalAlignment: 'left',
-        textHeight: entity.height,
-      }
-
-      const text = []
-      for (let item of textAndControlChars) {
-        if (typeof item === 'string') {
-          if (item.startsWith('pxq') && item.endsWith(';')) {
-            if (item.indexOf('c') !== -1) activeStyle.horizontalAlignment = 'center'
-            else if (item.indexOf('l') !== -1) activeStyle.horizontalAlignment = 'left'
-            else if (item.indexOf('r') !== -1) activeStyle.horizontalAlignment = 'right'
-            else if (item.indexOf('j') !== -1) activeStyle.horizontalAlignment = 'justify'
-          } else {
-            text.push(item)
-          }
-        } else if (Array.isArray(item)) {
-          const nestedFormat = mtextContentAndFormattingToTextAndStyle(item, entity, color)
-          text.push(nestedFormat.text)
-        } else if (typeof item === 'object') {
-          if (item['S'] && item['S'].length === 3) {
-            text.push(item['S'][0] + '/' + item['S'][2])
-          } else {
-            // not yet supported.
-          }
-        }
-      }
-      return {
-        text: text.join(),
-        style: activeStyle,
-      }
-    }
-
     function createTextForScene(text, style, entity, color) {
       if (!text) return null
 
       let textEnt = new Text()
-      textEnt.text = text.replaceAll('\\P', '\n').replaceAll('\\X', '\n')
+      textEnt.text = text
       textEnt.isMText = true
       textEnt.isText = true
 
@@ -524,8 +490,10 @@ class DXFLoader extends THREE.Loader {
       if (entity.isPolyfaceMesh) {
         points = decomposePolyfaceMesh(entity, data)
       } else {
-        // LWPOLYLINE stores a single elevation on the entity rather than a Z per
-        // vertex, so anything at a non-zero height flattens onto Z=0 without this.
+        // LWPOLYLINE stores one elevation (group code 38) on the entity instead of a
+        // Z per vertex, so without this every LWPOLYLINE above or below the XY plane
+        // is drawn flattened onto Z=0. POLYLINE vertices carry their own Z and are
+        // used as-is.
         const defaultZ = entity.elevation !== undefined ? entity.elevation : 0
 
         for (i = 0; i < entity.vertices.length; i++) {
@@ -588,7 +556,7 @@ class DXFLoader extends THREE.Loader {
             faces.push(face)
           }
         } else {
-          vertices.push(new THREE.Vector3(v.x, v.y, v.z || 0))
+          vertices.push(new THREE.Vector3(v.x, v.y, v.z ?? 0))
         }
       }
 
@@ -721,7 +689,10 @@ class DXFLoader extends THREE.Loader {
         return console.warn('Text is not supported without TextGeometry')
       }
 
-      geometry = new ThreeEx.TextGeometry(entity.text, {
+      // Typeface fonts often lack symbols like ⌀; keep the raw code rather than drop the character
+      const glyphs = font.data && font.data.glyphs
+      const content = parseText(entity.text, (ch) => !glyphs || ch in glyphs)
+      geometry = new ThreeEx.TextGeometry(content, {
         font: font,
         height: 0,
         size: entity.textHeight || 12,
@@ -740,7 +711,7 @@ class DXFLoader extends THREE.Loader {
       text.position.y = entity.startPoint.y
       text.position.z = entity.startPoint.z
 
-      text.text = entity.text
+      text.text = content
       text.isText = true
       text.fontSize = entity.textHeight
       text.orientationZ = entity.rotation
@@ -1112,10 +1083,12 @@ class DXFLoader extends THREE.Loader {
       entities.forEach((entity) => parent.add(entity))
     }
     if (enableUnitConversion) {
-      const scale = data.header?.['$DIMLFAC'] || 1
+      // Only $INSUNITS sizes the geometry. $DIMLFAC is the linear scale of
+      // dimension measurements, i.e. of the text a dimension displays; scaling
+      // the model by it made a drawing with a $DIMLFAC of 100 a hundred times
+      // too large.
       const unitToMeter = getUnitToMeter(data.header?.['$INSUNITS'])
-      const finalScale = scale * unitToMeter
-      parent.scale.set(finalScale, finalScale, finalScale)
+      parent.scale.set(unitToMeter, unitToMeter, unitToMeter)
     }
 
     // Resolve the unit off the header so consumers read it off `dxf` instead of re-deriving from the
