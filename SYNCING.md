@@ -26,6 +26,9 @@ list, the fewer conflicts each sync.
     `BULGE_SEGMENT_LENGTH`, `ARC_SEGMENT_LENGTH` and `ELLIPSE_SEGMENT_LENGTH`.
   - **`$DIMLFAC` does not scale the model** (#19). Only `$INSUNITS` sizes the
     geometry when unit conversion is on.
+  - **`$INSUNITS` 21, US survey feet**, in `DXF_UNITS` and `getUnitToMeter`.
+    Upstream stops at 20, which reads such a drawing as metres. Worth sending
+    upstream, like the polyline Z fix, to drop it from this list.
   - One line (`data.units = {...}`) that biome wraps differently from prettier.
 - TypeScript declarations (`src/**/*.d.ts`), `tsconfig.json`, `types-test/`.
   Upstream ships no types.
