@@ -57,6 +57,7 @@ const DXF_UNITS = {
   18: ['Astronomical units', 'AU'],
   19: ['Light years', 'ly'],
   20: ['Parsecs', 'pc'],
+  21: ['US Survey Feet', 'ft (US)'],
 }
 
 /**
@@ -991,6 +992,8 @@ class DXFLoader extends THREE.Loader {
           return 9.46073047808e15 // 'Light years'
         case 20:
           return 3.08567758128e16 // 'Parsecs'
+        case 21:
+          return 1200 / 3937 // 'US Survey Feet'
       }
 
       return 1
