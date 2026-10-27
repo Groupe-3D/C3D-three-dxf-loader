@@ -3,8 +3,7 @@ packages:
   - 'examples/r3f'
 
 # core-js's install script only prints a funding banner; nothing in this
-# workspace needs it to run. Deciding this here keeps
-# `pnpm install --frozen-lockfile` from failing CI on ERR_PNPM_IGNORED_BUILDS.
-allowBuilds:
-  core-js: false
-  core-js-pure: false
+# workspace needs it to run.
+ignoredBuiltDependencies:
+  - core-js
+  - core-js-pure
